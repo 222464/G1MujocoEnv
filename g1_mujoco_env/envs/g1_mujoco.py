@@ -49,27 +49,48 @@ class G1MujocoEnv(gym.Env):
 
         self.data = mujoco.MjData(self.model)
 
-        self.actuator_names = [
+        # need to reorder actuators to fit mjlab's order and offsets
+        mjlab_joint_order = [
+            'left_hip_pitch_joint', 'left_hip_roll_joint', 'left_hip_yaw_joint',
+            'left_knee_joint', 'left_ankle_pitch_joint', 'left_ankle_roll_joint',
+            'right_hip_pitch_joint', 'right_hip_roll_joint', 'right_hip_yaw_joint',
+            'right_knee_joint', 'right_ankle_pitch_joint', 'right_ankle_roll_joint',
+            'waist_yaw_joint', 'waist_roll_joint', 'waist_pitch_joint',
+            'left_shoulder_pitch_joint', 'left_shoulder_roll_joint', 'left_shoulder_yaw_joint',
+            'left_elbow_joint', 'left_wrist_roll_joint', 'left_wrist_pitch_joint',
+            'left_wrist_yaw_joint', 'right_shoulder_pitch_joint', 'right_shoulder_roll_joint',
+            'right_shoulder_yaw_joint', 'right_elbow_joint', 'right_wrist_roll_joint',
+            'right_wrist_pitch_joint', 'right_wrist_yaw_joint'
+        ]
+
+        mjlab_offset = [-0.3120, 0.0000, 0.0000, 0.6690, -0.3630, 0.0000,
+                        -0.3120, 0.0000, 0.0000, 0.6690, -0.3630, 0.0000,
+                         0.0000, 0.0000, 0.0000, 0.2000,  0.2000, 0.0000,
+                         0.6000, 0.0000, 0.0000, 0.0000,  0.2000, -0.2000,
+                         0.0000, 0.6000, 0.0000, 0.0000,  0.0000]
+
+        mjlab_scale  = [0.5475, 0.3507, 0.5475, 0.3507, 0.4386, 0.4386,
+                        0.5475, 0.3507, 0.5475, 0.3507, 0.4386, 0.4386,
+                        0.5475, 0.4386, 0.4386, 0.4386, 0.4386, 0.4386,
+                        0.4386, 0.4386, 0.0745, 0.0745, 0.4386, 0.4386,
+                        0.4386, 0.4386, 0.4386, 0.0745, 0.0745]
+
+        # Build mapping from mjlab order -> raw actuator index
+        self.raw_actuator_names = [
             mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
             for i in range(self.model.nu)
         ]
 
-        self.default_ctrl = np.zeros(self.model.nu)
+        # reorder offset and scale to match raw actuator order
+        self.default_ctrl  = np.zeros(self.model.nu)
+        self.action_scale  = np.ones(self.model.nu)
+        self.mjlab_to_raw  = {}
 
-        for i, name in enumerate(self.actuator_names):
-            joint_name = name.replace("actuator_", "")
-            for pattern, pos in g1.KNEES_BENT_KEYFRAME.joint_pos.items():
-                import re
-                if re.fullmatch(pattern, joint_name):
-                    self.default_ctrl[i] = pos
-
-        self.action_scale = np.array([
-            next(
-                (v for k, v in g1.G1_ACTION_SCALE.items() if re.fullmatch(k, name.replace("actuator_", ""))),
-                1.0
-            )
-            for name in self.actuator_names
-        ])
+        for mjlab_idx, joint_name in enumerate(mjlab_joint_order):
+            raw_idx = self.raw_actuator_names.index(joint_name)
+            self.mjlab_to_raw[mjlab_idx] = raw_idx
+            self.default_ctrl[raw_idx] = mjlab_offset[mjlab_idx]
+            self.action_scale[raw_idx] = mjlab_scale[mjlab_idx]
 
         if self.render_mode == "human":
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
@@ -135,6 +156,16 @@ class G1MujocoEnv(gym.Env):
 
         mujoco.mj_resetData(self.model, self.data)
 
+        # set base height
+        self.data.qpos[2] = 0.76
+        
+        # set joint positions using raw actuator -> joint mapping
+        for raw_idx in range(self.model.nu):
+            act_name = self.raw_actuator_names[raw_idx]
+            joint_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, act_name)
+            if joint_id >= 0:
+                self.data.qpos[self.model.jnt_qposadr[joint_id]] = self.default_ctrl[raw_idx]
+
         # set initial pose
         self.data.ctrl[:] = self.default_ctrl
 
@@ -149,7 +180,15 @@ class G1MujocoEnv(gym.Env):
         return observation, info
 
     def step(self, action):
-        target_ctrl = self.default_ctrl + action * self.action_scale
+        # action comes in mjlab's joint order, reorder to raw actuator order
+        action_raw = np.zeros(self.model.nu)
+        for mjlab_idx, raw_idx in self.mjlab_to_raw.items():
+            action_raw[raw_idx] = action[mjlab_idx]
+        
+        target_ctrl = self.default_ctrl + action_raw * self.action_scale
+        target_ctrl = np.clip(target_ctrl,
+                              self.model.actuator_ctrlrange[:, 0],
+                              self.model.actuator_ctrlrange[:, 1])
 
         for _ in range(self.decimation):
             self.data.ctrl[:] = target_ctrl
