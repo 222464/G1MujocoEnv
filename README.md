@@ -5,10 +5,9 @@ This was done for use with incremental/online learning algorithms that require f
 
 ## Installation
 
-To install your new environment, run the following commands:
+To install, run the following command:
 
 ```{shell}
-cd g1_mujoco_env
 pip install -e .
 ```
 
