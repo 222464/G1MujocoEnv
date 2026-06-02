@@ -26,15 +26,15 @@ class G1MujocoEnv(gym.Env):
 
         self.robot = Entity(g1.get_g1_robot_cfg())
 
-        self.ground = robot.spec.worldbody.add_geom()
+        self.ground = self.robot.spec.worldbody.add_geom()
         self.ground.type = mujoco.mjtGeom.mjGEOM_PLANE
         self.ground.size = [0, 0, 1.0]
         self.ground.pos = [0, 0, 0]
         self.ground.name = "ground"
 
-        self.model = robot.spec.compile()
+        self.model = self.robot.spec.compile()
 
-        self.data = mujoco.MjData(model)
+        self.data = mujoco.MjData(self.model)
 
         self.actuator_names = [
             mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, i)
@@ -90,7 +90,7 @@ class G1MujocoEnv(gym.Env):
 
     def _is_fallen():
         too_low = self.data.qpos[2] < 0.3
-        too_tilted = self.get_imu()[0][2] > -0.5
+        too_tilted = self._get_imu()[0][2] > -0.5
 
         return too_low or too_tilted
 
@@ -101,7 +101,7 @@ class G1MujocoEnv(gym.Env):
         return vel_reward
 
     def _get_obs(self):
-        projected_gravity, ang_vel, lin_vel, _ = self.get_imu()
+        projected_gravity, ang_vel, lin_vel, _ = self._get_imu()
 
         imu_obs = np.concatenate((lin_vel, ang_vel, projected_gravity), axis=0)
 
