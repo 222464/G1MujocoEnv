@@ -26,6 +26,7 @@ class G1MujocoEnv(gym.Env):
 
         self.robot = Entity(g1.get_g1_robot_cfg())
 
+        # add ground
         self.ground = self.robot.spec.worldbody.add_geom()
         self.ground.type = mujoco.mjtGeom.mjGEOM_PLANE
         self.ground.size = [0, 0, 1.0]
@@ -33,6 +34,18 @@ class G1MujocoEnv(gym.Env):
         self.ground.name = "ground"
 
         self.model = self.robot.spec.compile()
+
+        # match mjlab's SimulationCfg
+        self.model.opt.timestep = 0.005
+        self.model.opt.integrator = mujoco.mjtIntegrator.mjINT_IMPLICITFAST
+        self.model.opt.impratio = 1.0
+        self.model.opt.cone = mujoco.mjtCone.mjCONE_PYRAMIDAL
+        self.model.opt.solver = mujoco.mjtSolver.mjSOL_NEWTON
+        self.model.opt.iterations = 10
+        self.model.opt.tolerance = 1e-8
+        self.model.opt.ls_iterations = 20
+        self.model.opt.ls_tolerance = 0.01
+        self.model.opt.ccd_iterations = 50
 
         self.data = mujoco.MjData(self.model)
 
