@@ -63,15 +63,15 @@ class G1MujocoEnv(gym.Env):
         else:
             self.viewer = None
 
-    def _get_imu():
+    def _get_imu(self):
         pelvis_id = 1
 
         # data.xquat is [w, x, y, z]
         quat = self.data.xquat[pelvis_id]
-        rot = np.zeros(9, dtype=np.float32)
+        rot = np.zeros(9)
         mujoco.mju_quat2Mat(rot, quat)
         rot = rot.reshape(3, 3)
-        gravity_world = np.array([0.0, 0.0, -1.0], dtype=np.float32)
+        gravity_world = np.array([0.0, 0.0, -1.0])
         projected_gravity = rot.T @ gravity_world  # world -> body frame
 
         # angular velocity — sensor type 3 (gyro), sensordata[0:3]
@@ -88,13 +88,13 @@ class G1MujocoEnv(gym.Env):
 
         return projected_gravity, ang_vel, lin_vel, lin_acc
 
-    def _is_fallen():
+    def _is_fallen(self):
         too_low = self.data.qpos[2] < 0.3
         too_tilted = self._get_imu()[0][2] > -0.5
 
         return too_low or too_tilted
 
-    def _vel_reward(target_vel):
+    def _vel_reward(self, target_vel):
         forward_vel = self.data.qvel[0]
         vel_reward = 1.0 - abs(forward_vel - target_vel)
 
