@@ -63,6 +63,8 @@ class G1MujocoEnv(gym.Env):
         else:
             self.viewer = None
 
+        self.target_vel = np.array([0.5, 0.0, 0.0])
+
     def _get_imu(self):
         pelvis_id = 1
 
@@ -94,9 +96,9 @@ class G1MujocoEnv(gym.Env):
 
         return too_low or too_tilted
 
-    def _vel_reward(self, target_vel):
+    def _vel_reward(self):
         forward_vel = self.data.qvel[0]
-        vel_reward = 1.0 - abs(forward_vel - target_vel)
+        vel_reward = 1.0 - np.average(np.absolute(forward_vel - self.target_vel))
 
         return vel_reward
 
@@ -108,9 +110,7 @@ class G1MujocoEnv(gym.Env):
         joint_pos_obs = self.data.qpos[7:]
         joint_vel_obs = self.data.qvel[6:]
 
-        command = np.array([target_vel, 0.0, 0.0])
-
-        return np.concatenate((imu_obs, joint_pos_obs, joint_vel_obs, command), axis=0)
+        return np.concatenate((imu_obs, joint_pos_obs, joint_vel_obs, self.target_vel), axis=0)
 
     def _get_info(self):
         return {
@@ -145,7 +145,7 @@ class G1MujocoEnv(gym.Env):
         if self.viewer is not None:
             self.viewer.sync()
 
-        reward = self._vel_reward(target_vel)
+        reward = self._vel_reward()
         terminated = False
 
         if self._is_fallen():
