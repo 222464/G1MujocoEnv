@@ -1,25 +1,6 @@
-# Gymnasium Examples
-Some simple examples of Gymnasium environments and wrappers.
-For some explanations of these examples, see the [Gymnasium documentation](https://gymnasium.farama.org).
-
-### Environments
-This repository hosts the examples that are shown [on the environment creation documentation](https://gymnasium.farama.org/tutorials/gymnasium_basics/environment_creation/).
-- `GridWorldEnv`: Simplistic implementation of gridworld environment
-
-### Wrappers
-This repository hosts the examples that are shown [on wrapper documentation](https://gymnasium.farama.org/api/wrappers/).
-- `ClipReward`: A `RewardWrapper` that clips immediate rewards to a valid range
-- `DiscreteActions`: An `ActionWrapper` that restricts the action space to a finite subset
-- `RelativePosition`: An `ObservationWrapper` that computes the relative position between an agent and a target
-- `ReacherRewardWrapper`: Allow us to weight the reward terms for the reacher environment
-
-### Contributing
-If you would like to contribute, follow these steps:
-- Fork this repository
-- Clone your fork
-- Set up pre-commit via `pre-commit install`
-
-PRs may require accompanying PRs in [the documentation repo](https://github.com/Farama-Foundation/Gymnasium/tree/main/docs).
+# G1 Mujoco Gymnasium Environment
+This repository contains a recreation of the [MJLab](https://github.com/mujocolab/mjlab.git) Mjlab-Velocity-Flat-Unitree-G1 environment with plain MuJoCo.
+This was done for use with incremental/online learning algorithms that require fast single-environment iteration, where the parallel system offered by MJLab was far too slow.
 
 
 ## Installation
